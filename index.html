@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Sentinel - Early Outbreak Warning</title>
+    
+    <!-- 1. Tailwind CSS (for styling) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Chart.js (for graphs) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- 3. Google Font (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 4. Custom Styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind's gray-100 */
+        }
+        /* Custom class for the loader spinner */
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spin 1s linear infinite;
+            animation: spin 1s linear infinite;
+        }
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header Bar -->
+    <header class="bg-white shadow-md">
+        <div class="container mx-auto px-6 py-4">
+            <h1 class="text-3xl font-bold text-gray-800">
+                Project Sentinel 
+                <span class="text-xl font-normal text-blue-600 ml-2">Early Outbreak Warning</span>
+            </h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        
+        <!-- Grid Layout: 1/3 for Controls, 2/3 for Dashboard -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <!-- Column 1: Control Panel -->
+            <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-lg h-fit">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6">Threat Analysis</h2>
+                
+                <!-- Disease Selection -->
+                <div class="mb-4">
+                    <label for="select-disease" class="block text-sm font-medium text-gray-700 mb-2">Select Disease</label>
+                    <select id="select-disease" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="flu">Influenza (Flu)</option>
+                        <option value="dengue" selected>Dengue Fever</option>
+                        <option value="covid">COVID-19</option>
+                    </select>
+                </div>
+                
+                <!-- City Selection -->
+                <div class="mb-4">
+                    <label for="select-city" class="block text-sm font-medium text-gray-700 mb-2">Select City</label>
+                    <select id="select-city" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="kanpur" selected>Kanpur</option>
+                        <option value="mumbai">Mumbai</option>
+                        <option value="delhi">Delhi</option>
+                        <option value="bangalore">Bangalore</option>
+                        <option value="chennai">Chennai</option>
+                    </select>
+                </div>
+
+                <!-- Geo Region Selection -->
+                <div class="mb-6">
+                    <label for="select-geo" class="block text-sm font-medium text-gray-700 mb-2">Select Geo-Region (for Trends)</label>
+                    <select id="select-geo" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="IN-UP" selected>Uttar Pradesh (IN-UP)</option>
+                        <option value="IN-MH">Maharashtra (IN-MH)</option>
+                        <option value="IN-DL">Delhi (IN-DL)</option>
+                        <option value="IN-KA">Karnataka (IN-KA)</option>
+                        <option value="IN-TN">Tamil Nadu (IN-TN)</option>
+                        <option value="IN">All India (IN)</option>
+                    </select>
+                </div>
+                
+                <!-- Analyze Button -->
+                <button id="analyze-btn" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    <span id="btn-text">Analyze Threat</span>
+                    <div id="loader" class="hidden loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-6 w-6 ml-3"></div>
+                </button>
+            </div>
+            
+            <!-- Column 2: Results Dashboard -->
+            <div class="md:col-span-2 space-y-8">
+                
+                <!-- Error Message Container (Hidden by default) -->
+                <div id="error-container" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-lg" role="alert">
+                    <p class="font-bold">Connection Error</p>
+                    <p id="error-message">Could not connect to the backend server. Please make sure it's running on `http://127.0.0.1:5001`.</p>
+                </div>
+
+                <!-- Results Container (Hidden by default) -->
+                <div id="results-container" class="hidden space-y-8">
+                    
+                    <!-- Row 1: Key Metrics (Threat Level & Score) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Threat Level Card -->
+                        <div class="bg-white p-6 rounded-lg shadow-lg">
+                            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Current Threat Level</h3>
+                            <p id="threat-level-display" class="mt-2 text-5xl font-bold text-gray-800">--</p>
+                            <!-- This empty div will be used to inject the colored badge -->
+                            <div id="threat-level-badge" class="mt-3"></div>
+                        </div>
+                        
+                        <!-- Threat Score Card -->
+                        <div class="bg-white p-6 rounded-lg shadow-lg">
+                            <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Calculated Threat Score</h3>
+                            <p id="threat-score-display" class="mt-2 text-5xl font-bold text-gray-800">--</p>
+                            <p class="mt-3 text-sm text-gray-500">(Composite of all data sources)</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 2: Recommended Action -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3">Recommended Action</h3>
+                        <p id="action-item-display" class="text-gray-600 text-lg">--</p>
+                    </div>
+                    
+                    <!-- Row 3: Google Trends Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">Google Trends: Search Interest (Last 30 Days)</h3>
+                        <div class="h-96">
+                            <canvas id="trends-chart"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- 1. DOM Element References ---
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const btnText = document.getElementById('btn-text');
+        const loader = document.getElementById('loader');
+        
+        const selectDisease = document.getElementById('select-disease');
+        const selectCity = document.getElementById('select-city');
+        const selectGeo = document.getElementById('select-geo');
+        
+        const errorContainer = document.getElementById('error-container');
+        const errorMessage = document.getElementById('error-message');
+        const resultsContainer = document.getElementById('results-container');
+        
+        const threatLevelDisplay = document.getElementById('threat-level-display');
+        const threatLevelBadge = document.getElementById('threat-level-badge');
+        const threatScoreDisplay = document.getElementById('threat-score-display');
+        const actionItemDisplay = document.getElementById('action-item-display');
+        
+        const chartCanvas = document.getElementById('trends-chart');
+        let trendsChartInstance = null; // To hold the chart instance
+
+        // --- 2. Event Listeners ---
+        analyzeBtn.addEventListener('click', handleAnalysis);
+        
+        // Auto-analyze on first load for a nice demo
+        document.addEventListener('DOMContentLoaded', () => {
+            analyzeBtn.click();
+        });
+
+        // --- 3. Main Data Fetching Function ---
+        async function handleAnalysis() {
+            console.log("Starting analysis...");
+            
+            // A. Set Loading State
+            setLoadingState(true);
+            errorContainer.classList.add('hidden'); // Hide old errors
+            
+            // B. Get User Input
+            const disease = selectDisease.value;
+            const city = selectCity.value;
+            const geo = selectGeo.value;
+            
+            // C. Build API URL
+            const apiUrl = `http://127.0.0.1:5001/api/threat?disease=${disease}&city=${city}&geo=${geo}`;
+            console.log(`Fetching from: ${apiUrl}`);
+
+            // D. Fetch Data
+            try {
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log("Data received:", data);
+
+                // E. Update UI with data
+                updateUI(data);
+                renderChart(data.chart_data);
+                
+                // Show results
+                resultsContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                // Show error message to user
+                errorMessage.textContent = `Could not connect to the backend. Is it running at http://127.0.0.1:5001? (Error: ${error.message})`;
+                errorContainer.classList.remove('hidden');
+                resultsContainer.classList.add('hidden'); // Hide stale results
+            } finally {
+                // F. Remove Loading State
+                setLoadingState(false);
+            }
+        }
+
+        // --- 4. Helper Functions ---
+        
+        function setLoadingState(isLoading) {
+            if (isLoading) {
+                analyzeBtn.disabled = true;
+                btnText.textContent = "Analyzing...";
+                loader.classList.remove('hidden');
+            } else {
+                analyzeBtn.disabled = false;
+                btnText.textContent = "Analyze Threat";
+                loader.classList.add('hidden');
+            }
+        }
+        
+        function updateUI(data) {
+            // Update text content
+            threatLevelDisplay.textContent = data.threat_level;
+            threatScoreDisplay.textContent = data.threat_score;
+            actionItemDisplay.textContent = data.action_item;
+            
+            // Update Threat Level badge with dynamic colors
+            let badgeClass = "";
+            let badgeText = data.threat_level;
+            
+            switch (data.threat_level) {
+                case 'High':
+                    badgeClass = 'bg-red-100 text-red-800';
+                    break;
+                case 'Elevated':
+                    badgeClass = 'bg-yellow-100 text-yellow-800';
+                    break;
+                case 'Guarded':
+                    badgeClass = 'bg-blue-100 text-blue-800';
+                    break;
+                case 'Low':
+                    badgeClass = 'bg-green-100 text-green-800';
+                    break;
+                default:
+                    badgeClass = 'bg-gray-100 text-gray-800';
+            }
+            
+            threatLevelBadge.innerHTML = `<span class="inline-flex items-center px-3 py-1 rounded-full text-lg font-semibold ${badgeClass}">${badgeText}</span>`;
+            
+            // Also color the main text
+            threatLevelDisplay.className = `mt-2 text-5xl font-bold ${badgeClass.split(' ')[1]}`;
+        }
+        
+        function renderChart(chartData) {
+            // Chart.js requires a context
+            const ctx = chartCanvas.getContext('2d');
+            
+            // Destroy the old chart if it exists
+            if (trendsChartInstance) {
+                trendsChartInstance.destroy();
+                trendsChartInstance = null; // Set to null after destroying
+            }
+
+            // --- FIX ---
+            // Check if chartData or chartData.datasets is missing or empty
+            if (!chartData || !chartData.datasets || chartData.datasets.length === 0) {
+                console.warn("No chart data or datasets available to render.");
+                // Clear the canvas and show a "No data" message
+                ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+                ctx.font = "16px 'Inter', sans-serif";
+                ctx.fillStyle = "#6B7280"; // text-gray-500
+                ctx.textAlign = 'center';
+                ctx.fillText('No trend data available for this query.', chartCanvas.width / 2, chartCanvas.height / 2);
+                return; // Exit the function
+            }
+            // --- END FIX ---
+
+
+            // Define some colors for the chart lines
+            const lineColors = [
+                '#3B82F6', // blue-500
+                '#EF4444', // red-500
+                '#10B981', // green-500
+                '#F59E0B', // yellow-500
+            ];
+
+            // Map the datasets from the backend to Chart.js format
+            const formattedDatasets = chartData.datasets.map((dataset, index) => ({
+                label: dataset.label,
+                data: dataset.data,
+                borderColor: lineColors[index % lineColors.length],
+                backgroundColor: lineColors[index % lineColors.length] + '33', // Add transparency
+                fill: false,
+                tension: 0.1,
+                borderWidth: 2,
+                pointRadius: 1,
+            }));
+
+            // Create the new chart
+            trendsChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels, // X-axis labels (dates)
+                    datasets: formattedDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Relative Search Interest'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    hover: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
